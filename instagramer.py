@@ -137,6 +137,19 @@ def getUserMedia(user_id: AnyStr, username: AnyStr, media_count: AnyStr, is_priv
 
 	for x in output["data"]["user"]["edge_owner_to_timeline_media"]["edges"]:
 		media_type = "Image" if x["node"]["is_video"] == False else "Video"
+		if x["node"]["__typename"] == "GraphSidecar":
+			with requests.get(
+					"https://www.instagram.com/p/" + str(x["node"]["shortcode"]) + "/?__a=1") as responsepost:
+				try:
+					result = responsepost
+				except requests.ConnectionError:
+					raise ConnectionError("Error: Connection Error")
+
+			result = json.loads(result.content)
+			for i in result["graphql"]["shortcode_media"]["edge_sidecar_to_children"]["edges"]:
+				filename = str(i["node"]["display_url"]).split('?')[0]
+				filename = filename.split('/')[-1]
+				urllib.request.urlretrieve(str(i["node"]["display_url"]), username + "/" + filename)
 
 		if media_type == "Video":
 			data_video = urllib.request.urlopen(
@@ -147,6 +160,8 @@ def getUserMedia(user_id: AnyStr, username: AnyStr, media_count: AnyStr, is_priv
 			urllib.request.urlretrieve(output_video["graphql"]["shortcode_media"]["video_url"],
 									   username + "/" + filename)
 		else:
+			if x["node"]["__typename"] == "GraphSidecar":
+				pass
 			filename = str(x["node"]["thumbnail_src"]).split('?')[0]
 			filename = filename.split('/')[-1]
 			urllib.request.urlretrieve(str(x["node"]["thumbnail_src"]), username + "/" + filename)
